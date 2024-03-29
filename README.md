@@ -3,29 +3,31 @@
 Dare is a lightweight C library to emulate exception handling functionality that is present in other high level languages such as Java, for example.
 Although C is a very powerful language, the lack of exception handling forces this kind of code:
 
-    int foo() {
-      int err = do_something();
-      if (err) {
-        log_err("An error %d occurred", err);
-        goto catch;
-      }
+~~~ c
+int foo() {
+	int err = do_something();
+	if (err) {
+		log_err("An error %d occurred", err);
+		goto catch;
+	}
 
-      err = do_something_else();
-      if (err) {
-        log_err("Some other error %d occurred", err);
-      }
+	err = do_something_else();
+	if (err) {
+		log_err("Some other error %d occurred", err);
+	}
 
-      // etc...
-      goto finally;
+	// etc...
+	goto finally;
 
-    catch:
-      // treat problems here
+catch:
+	// treat problems here
 
-    finally:
-      // free() some stuff
+finally:
+	// free() some stuff
 
-      return err;
-    }
+	return err;
+}
+~~~
 
 The code above has at least the following disadvantages:
 
@@ -47,61 +49,66 @@ This section shows how to do many things using Dare. There is also an example co
 
 Suppose you have the following data structure representing a fraction and a function to build it. To prevent a division by zero you could write some code like this:
 
-    #include <stdio.h>
+~~~ c
+#include <stdio.h>
 
-    #define ZERO_DIV_CODE 0
-    #define ZERO_DIV_MSG "Division by zero"
+#define ZERO_DIV_CODE 0
+#define ZERO_DIV_MSG "Division by zero"
 
-    typedef struct {
-      int num;
-      int den;
-    } Fraction;
+typedef struct {
+	int num;
+	int den;
+} Fraction;
 
-    Fraction fraction_new(int num, int den) {
-      Fraction ret = {0};
-      try (
-        if (den == 0)
-          throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
+Fraction fraction_new(int num, int den) {
+	Fraction ret = {0};
+	try (
+		if (den == 0)
+		throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
 
-        ret.num = num;
-        ret.den = den;
-      ) catch (
-        puts(exception_msg(EVAR));
-      )
-      return ret;
-    }
+		ret.num = num;
+		ret.den = den;
+	) catch (
+		puts(exception_msg(EVAR));
+	)
+	return ret;
+}
+
+~~~
 
 `try`, `catch`, and `throw` are just macros and the code above expands to:
 
-    #include <stdio.h>
+~~~ c
+#include <stdio.h>
 
-    #define ZERO_DIV_CODE 0
-    #define ZERO_DIV_MSG "Division by zero"
+#define ZERO_DIV_CODE 0
+#define ZERO_DIV_MSG "Division by zero"
 
-    typedef struct {
-      int num;
-      int den;
-    } Fraction;
+typedef struct {
+	int num;
+	int den;
+} Fraction;
 
-    Fraction fraction_new(int num, int den) {
-      Fraction ret = {0};
-      Exception dare_exception = NULL;
-      if (den == 0) {
-        dare_exception = new_exception("Division by zero", 0, NULL);
-        dare_exception = add_line(dare_exception, "  at " __FILE__ ":" xstr(__LINE__)); \
-        goto dare_failure;
-      }
+Fraction fraction_new(int num, int den) {
+	Fraction ret = {0};
+	Exception dare_exception = NULL;
+	if (den == 0) {
+		dare_exception = new_exception("Division by zero", 0, NULL);
+		dare_exception = add_line(dare_exception, "  at " __FILE__ ":" xstr(__LINE__)); \
+		goto dare_failure;
+	}
 
-      ret.num = num;
-      ret.den = den;
-      goto dare_success;
+	ret.num = num;
+	ret.den = den;
+	goto dare_success;
 
-    dare_failure:
-      puts(exception_msg(dare_exception));
+dare_failure:
+	puts(exception_msg(dare_exception));
 
-    dare_success:
-      return ret;
-    }
+dare_success:
+	return ret;
+}
+~~~
 
 ## Rethrow and catch
 
@@ -110,42 +117,44 @@ However, oftentimes you do not want to throw and catch the exception in the same
 For those times, there are two other macros: `check` and `check_cause`.
 The code below illustrates how the `check` macro works:
 
-    #include <stdio.h>
+~~~ c
+#include <stdio.h>
 
-    #define ZERO_DIV_CODE 0
-    #define NULL_POINTER_CODE 1
-    #define ZERO_DIV_MSG "Division by zero"
-    #define NULL_POINTER_MSG "Tried to access a null pointer"
+#define ZERO_DIV_CODE 0
+#define NULL_POINTER_CODE 1
+#define ZERO_DIV_MSG "Division by zero"
+#define NULL_POINTER_MSG "Tried to access a null pointer"
 
-    typedef struct {
-      int num;
-      int den;
-    } Fraction;
+typedef struct {
+	int num;
+	int den;
+} Fraction;
 
-    Exception fraction_new(Fraction *self, int num, int den) {
-      try (
-        if (!self)
-          throw(NULL_POINTER, NULL_POINTER_MSG)
-        if (den == 0)
-          throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
+Exception fraction_new(Fraction *self, int num, int den) {
+	try (
+		if (!self)
+			throw(NULL_POINTER, NULL_POINTER_MSG)
+		if (den == 0)
+			throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
 
-        self->num = num;
-        self->den = den;
-        return SUCCESS;
-      ) catch (
-        return EVAR;
-      )
-    }
+		self->num = num;
+		self->den = den;
+		return SUCCESS;
+	) catch (
+		return EVAR;
+	)
+}
 
-    void foo(int num, int den) {
-      try (
-        Fraction f;
-        check(fraction_new(&f, num, den))
-        printf("New fraction is: %d/%d\n", f.num, f.den);
-      ) catch (
-        puts(exception_msg(EVAR));
-      )
-    }
+void foo(int num, int den) {
+	try (
+		Fraction f;
+		check(fraction_new(&f, num, den))
+		printf("New fraction is: %d/%d\n", f.num, f.den);
+	) catch (
+		puts(exception_msg(EVAR));
+	)
+}
+~~~
 
 Now there's a lot going on there, so let me explain it by parts.
 The first thing to be noticed is that function `fraction_new()` may throw exceptions now.
@@ -160,17 +169,21 @@ The last thing that should be noticed is that we use the macro `check` around th
 
 Perhaps all those things are better understood by noting that the line containing the macro `check`:
 
-    check(fraction_new(&f, num, den))
+~~~ c
+check(fraction_new(&f, num, den))
+~~~
 
 simply expands to:
 
-    { \
-        dare_exception = fraction_new(&f, num, den); \
-        if (dare_exception != SUCCESS) { \
-          dare_exception = add_line(dare_exception, "  at " __FILE__ ":" xstr(__LINE__)); \
-          goto dare_failure; \
-        } \
-    }
+~~~ c
+{ \
+	dare_exception = fraction_new(&f, num, den); \
+	if (dare_exception != SUCCESS) { \
+		dare_exception = add_line(dare_exception, "  at " __FILE__ ":" xstr(__LINE__)); \
+		goto dare_failure; \
+	} \
+}
+~~~
 
 In other words, the macro `check(expression)` evaluates the expression in parenthesis and treats it as an `Exception` if it is not SUCCESS.
 In which case, the current line is included in its stacktrace and the program execution continues at the catch block.
@@ -181,44 +194,46 @@ Sometimes we want to catch an `Exception` but rethrow a different one.
 For those cases the Dare library provides the macro `check_cause`.
 An example of use is like this:
 
-    #include <stdio.h>
+~~~ c
+#include <stdio.h>
 
-    #define ZERO_DIV_CODE 0
-    #define NULL_POINTER_CODE 1
-    #define FR_CREAT_CODE 37
-    #define ZERO_DIV_MSG "Division by zero"
-    #define NULL_POINTER_MSG "Tried to access a null pointer"
-    #define FR_CREAT_MSG "Fraction creation exception"
+#define ZERO_DIV_CODE 0
+#define NULL_POINTER_CODE 1
+#define FR_CREAT_CODE 37
+#define ZERO_DIV_MSG "Division by zero"
+#define NULL_POINTER_MSG "Tried to access a null pointer"
+#define FR_CREAT_MSG "Fraction creation exception"
 
-    typedef struct {
-      int num;
-      int den;
-    } Fraction;
+typedef struct {
+	int num;
+	int den;
+} Fraction;
 
-    Exception fraction_new(Fraction *self, int num, int den) {
-      try (
-        if (!self)
-          throw(NULL_POINTER, NULL_POINTER_MSG)
-        if (den == 0)
-          throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
+Exception fraction_new(Fraction *self, int num, int den) {
+	try (
+	if (!self)
+		throw(NULL_POINTER, NULL_POINTER_MSG)
+	if (den == 0)
+		throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
 
-        self->num = num;
-        self->den = den;
-        return SUCCESS;
-      ) catch (
-        return EVAR;
-      )
-    }
+	self->num = num;
+	self->den = den;
+		return SUCCESS;
+	) catch (
+		return EVAR;
+	)
+}
 
-    void foo(int num, int den) {
-      try (
-        Fraction f;
-        check_cause(fraction_new(&f, num, den), FR_CREAT_CODE, FR_CREAT_MSG)
-        printf("New fraction is: %d/%d\n", f.num, f.den);
-      ) catch (
-        puts(exception_msg(EVAR));
-      )
-    }
+void foo(int num, int den) {
+	try (
+		Fraction f;
+		check_cause(fraction_new(&f, num, den), FR_CREAT_CODE, FR_CREAT_MSG)
+		printf("New fraction is: %d/%d\n", f.num, f.den);
+	) catch (
+		puts(exception_msg(EVAR));
+	)
+}
+~~~
 
 This code is very similar to the one before, except that the macro `check_cause` receives three arguments.
 What changed is that now if `foo()` is called with 0 in its second argument, for example, there will be two `Exceptions`: the outmost exception and its cause.
@@ -229,10 +244,10 @@ Each level will have its own stacktrace too.
 
 The example above is very simple, so the stacktrace printed will be something like this:
 
-    Exception: (37) Fraction creation exception
-      at file.c: 33
-    Caused by: (0) Division by zero
-      at file.c: 20
+Exception: (37) Fraction creation exception
+	at file.c: 33
+Caused by: (0) Division by zero
+	at file.c: 20
 
 ## Verify some condition
 
@@ -240,15 +255,19 @@ When we need to verify some condition we use assertions.
 The Dare library provides some often used assertions.
 For example, in the codes above, instead of writing
 
-    if (!self)
-      throw(NULL_POINTER, NULL_POINTER_MSG)
-    if (den == 0)
-      throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
+~~~ c
+if (!self)
+	throw(NULL_POINTER, NULL_POINTER_MSG)
+if (den == 0)
+	throw(ZERO_DIV_CODE, ZERO_DIV_MSG)
+~~~
 
 we could simply write
 
-    assert_not_null(self, NULL_POINTER, NULL_POINTER_MSG)
-    assert_not_equal(den, 0, ZERO_DIV_CODE, ZERO_DIV_MSG)
+~~~ c
+assert_not_null(self, NULL_POINTER, NULL_POINTER_MSG)
+assert_not_equal(den, 0, ZERO_DIV_CODE, ZERO_DIV_MSG)
+~~~
 
 to the same effect.
 That is, the first one throws an exception if `self` is `NULL`, the second one throws an exception if the value of `den` is zero.
@@ -257,18 +276,20 @@ The code and message of the exception thrown are given in the other two argument
 Each assertion macro provided does exactly what its name says.
 All the assertions provided are listed below:
 
-    assert_true(X, MSG, CODE)
-    assert_false(X, MSG, CODE)
-    assert_null(X, MSG, CODE)
-    assert_not_null(X, MSG, CODE)
-    assert_equal(X, Y, MSG, CODE)
-    assert_not_equal(X, Y, MSG, CODE)
-    assert_lt(X, Y, MSG, CODE)
-    assert_gt(X, Y, MSG, CODE)
-    assert_le(X, Y, MSG, CODE)
-    assert_ge(X, Y, MSG, CODE)
-    assert_str_equal(X, Y, MSG, CODE)
-    assert_str_not_equal(X, Y, MSG, CODE)
+~~~ c
+assert_true(X, MSG, CODE)
+assert_false(X, MSG, CODE)
+assert_null(X, MSG, CODE)
+assert_not_null(X, MSG, CODE)
+assert_equal(X, Y, MSG, CODE)
+assert_not_equal(X, Y, MSG, CODE)
+assert_lt(X, Y, MSG, CODE)
+assert_gt(X, Y, MSG, CODE)
+assert_le(X, Y, MSG, CODE)
+assert_ge(X, Y, MSG, CODE)
+assert_str_equal(X, Y, MSG, CODE)
+assert_str_not_equal(X, Y, MSG, CODE)
+~~~
 
 # Possible problems
 
